@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>GG Game Club — тест</title>
+<style>
+  /* --- Базовый стиль, шрифты, фон (киберпанк) --- */
+  :root{
+    --neon-blue: #7de3ff;
+    --neon-cyan: #22e3ff;
+    --accent: #7de3ff;
+    --dark: #06070a;
+    --panel: rgba(8,10,16,0.8);
+    --glass: linear-gradient(135deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  }
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:#05060a;color:#e8faff;}
+  /* Animated neon background + simple city silhouette (svg) */
+  body{
+    background:
+      radial-gradient(1000px 400px at 10% 20%, rgba(34,227,255,0.08), transparent 6%),
+      radial-gradient(900px 350px at 90% 80%, rgba(124,125,255,0.06), transparent 6%),
+      linear-gradient(180deg,#071026 0%, #04040a 60%, #020006 100%);
+    overflow-y:auto;
+  }
+  /* subtle animated scan lines */
+  .scanlines{
+    pointer-events:none;
+    position:fixed;left:0;top:0;width:100%;height:100%;mix-blend-mode:overlay;opacity:0.08;
+    background-image:linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size:100% 6px;
+    animation: drift 12s linear infinite;
+  }
+  @keyframes drift { from{background-position-y:0} to{background-position-y:600px} }
+
+  /* Header / Logo */
+  header{
+    display:flex;align-items:center;justify-content:space-between;padding:18px 32px;
+    gap:16px;
+  }
+  .logo {
+    display:flex;align-items:center;gap:14px;
+  }
+  .logo-mark{
+    width:58px;height:58px;border-radius:10px;
+    background: linear-gradient(135deg, rgba(125,227,255,0.14), rgba(34,227,255,0.06));
+    box-shadow: 0 0 18px rgba(125,227,255,0.12), inset 0 1px 0 rgba(255,255,255,0.02);
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(125,227,255,0.18);
+  }
+  /* neon text logo look — голубой неон */
+  .logo-text{
+    font-weight:800;font-size:28px;color:var(--neon-blue);letter-spacing:1px;
+    text-shadow:
+      0 0 6px rgba(125,227,255,0.9),
+      0 0 18px rgba(125,227,255,0.6),
+      0 2px 0 rgba(0,0,0,0.5);
+  }
+
+  /* Layout */
+  .main{
+    display:flex;gap:28px;align-items:flex-start;justify-content:center;padding:0 28px 60px;
+  }
+  .left-panel{
+    width:66%;
+    max-width:1100px;
+    padding:18px;
+    display:flex;gap:18px;
+    align-items:flex-start;
+  }
+  .right-panel{
+    width:300px;min-width:260px;padding:18px;
+    position:sticky;top:20px;height:calc(100vh - 40px);
+  }
+
+  /* Hall layout: two columns of cabins */
+  .hall {
+    display:flex;gap:24px;width:100%;
+    align-items:flex-start;
+  }
+  .col {
+    display:flex;flex-direction:column;gap:18px;
+  }
+
+  /* cabin card */
+  .cab {
+    width:260px;height:140px;border-radius:14px;
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));
+    border:1px solid rgba(125,227,255,0.12);
+    box-shadow: 0 6px 24px rgba(0,0,0,0.6), 0 0 18px rgba(34,227,255,0.04) inset;
+    position:relative;overflow:hidden;cursor:pointer;
+    transition: transform 250ms cubic-bezier(.2,.9,.2,1), box-shadow 250ms;
+    display:flex;flex-direction:column;justify-content:center;align-items:flex-start;padding:14px 16px;
+  }
+  .cab:hover{ transform: translateY(-6px); box-shadow: 0 12px 36px rgba(0,0,0,0.7), 0 0 36px rgba(34,227,255,0.12) inset; }
+  .cab .title { font-weight:700;font-size:20px;color:var(--neon-cyan);text-shadow: 0 0 8px rgba(34,227,255,0.2); }
+  .cab .type { font-size:13px;color:#cfeff6;margin-top:6px;opacity:0.85;}
+  .cab .price { margin-left:auto;margin-top:8px;font-weight:700;color:var(--neon-blue); }
+
+  /* status badge (now clickable) */
+  .status {
+    position:absolute;right:12px;top:12px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;
+    color:#03070a;background:linear-gradient(180deg,#9ff8ff,#3ddfff);box-shadow:0 0 12px rgba(34,227,255,0.12);
+    cursor:pointer;
+  }
+  .status.busy { background: linear-gradient(180deg,#ff9b9b,#ff5a5a); color:#170000; box-shadow:0 0 14px rgba(255,90,90,0.15);}
+
+  /* tooltip / small info on hover */
+  .cab .small {
+    margin-top:10px;font-size:13px;color:#dffaff;opacity:0.9;
+  }
+  .cab .times{ font-size:13px;color:#bfefff;margin-top:8px;opacity:0.9; }
+
+  /* right panel: snacks + contacts */
+  .card{
+    background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.12));
+    border:1px solid rgba(125,227,255,0.08);
+    border-radius:12px;padding:14px;margin-bottom:18px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  }
+  .card h3{ margin:0 0 10px 0;color:var(--neon-cyan); }
+  .snack { display:flex;justify-content:space-between;padding:8px 4px;border-bottom:1px dashed rgba(125,227,255,0.03); }
+  .snack:last-child{ border-bottom:none; }
+
+  /* booking modal — made less transparent so text reads well */
+  .modal {
+    position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;
+    background:linear-gradient(rgba(0,0,0,0.75), rgba(0,0,0,0.75));z-index:1200;
+  }
+  .modal-inner{
+    width:420px;
+    background: rgba(12,12,14,0.98); /* less transparent */
+    border-radius:12px;padding:18px;border:1px solid rgba(125,227,255,0.08);
+    box-shadow:0 18px 50px rgba(0,0,0,0.85);
+  }
+  .modal-inner h2{ margin:0 0 8px 0;color:var(--neon-blue); }
+  label{ font-size:13px;color:#cfeff6;display:block;margin-top:8px;margin-bottom:6px; }
+  input[type=text], input[type=tel], select {
+    width:100%;padding:10px;border-radius:8px;border:none;background:rgba(255,255,255,0.02);color:#dffaff;
+    outline:none;box-shadow:inset 0 1px 0 rgba(255,255,255,0.01);
+  }
+  .row { display:flex;gap:10px; }
+  .row .half { flex:1; }
+
+  .btn {
+    display:inline-block;padding:10px 14px;border-radius:8px;border:none;background:var(--neon-blue);color:#001;
+    font-weight:700;margin-top:12px;cursor:pointer;
+  }
+  .btn.cancel{ background:transparent;color:#cfeff6;border:1px solid rgba(125,227,255,0.06); }
+
+  .small-muted{ font-size:12px;color:#9feefb;opacity:0.9;margin-top:8px; }
+
+  /* bookings list under hall */
+  .bookings-list{ margin-top:20px;color:#dffaff;font-size:14px; }
+
+  /* footer contacts */
+  footer { padding:18px 28px; display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap; }
+  .contacts{ display:flex;gap:18px;align-items:center; }
+  .icon{ width:36px;height:36px;display:inline-flex;align-items:center;justify-content:center;border-radius:8px;background:rgba(255,255,255,0.02);border:1px solid rgba(125,227,255,0.06); }
+  .qr { width:84px;height:84px;border-radius:8px;background:#fff;padding:8px; }
+
+  /* responsive */
+  @media(max-width:980px){
+    .main{flex-direction:column;padding:0 18px 60px;}
+    .left-panel{width:100%}
+    .right-panel{width:100%;position:static;height:auto;order:2}
+    .hall{flex-wrap:wrap;gap:14px;justify-content:center}
+    .cab{width:320px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="scanlines"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-mark" aria-hidden>
+      <!-- stylized GG mark (kept) -->
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="2" y="2" width="20" height="20" rx="4" fill="rgba(125,227,255,0.06)"></rect>
+        <path d="M7 12h5a3 3 0 1 0-3-3" stroke="#7de3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M17 12h-5a3 3 0 1 1 3 3" stroke="#22e3ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div>
+      <div class="logo-text">GG Game Club</div>
+      <div style="font-size:12px;color:#bfefff;opacity:0.9;">Игровая зона • Резерв онлайн</div>
+    </div>
+  </div>
+
+  <div style="display:flex;gap:12px;align-items:center;">
+    <div class="small-muted">Время работы: 11:00 — 02:00</div>
+  </div>
+</header>
+
+<div class="main">
+  <section class="left-panel">
+    <div style="width:100%;">
+      <div class="hall" id="hall">
+        <div class="col" id="leftCol">
+          <!-- left (3 обычных) -->
+          <div class="cab" data-id="1" data-type="Обычная">
+            <div class="title">Кабина 1</div>
+            <div class="type">Обычная • 300₽/час</div>
+            <div class="small">Состояние: <span class="status-text">Свободно</span></div>
+            <div class="times"></div>
+            <div class="status" aria-hidden>Свободно</div>
+          </div>
+
+          <div class="cab" data-id="2" data-type="Обычная">
+            <div class="title">Кабина 2</div>
+            <div class="type">Обычная • 300₽/час</div>
+            <div class="small">Состояние: <span class="status-text">Свободно</span></div>
+            <div class="times"></div>
+            <div class="status" aria-hidden>Свободно</div>
+          </div>
+
+          <div class="cab" data-id="3" data-type="Обычная">
+            <div class="title">Кабина 3</div>
+            <div class="type">Обычная • 300₽/час</div>
+            <div class="small">Состояние: <span class="status-text">Свободно</span></div>
+            <div class="times"></div>
+            <div class="status" aria-hidden>Свободно</div>
+          </div>
+        </div>
+
+        <div class="col" id="rightCol">
+          <!-- right (3 VIP) -->
+          <div class="cab" data-id="4" data-type="VIP">
+            <div class="title">VIP 1</div>
+            <div class="type">VIP • 500₽/час</div>
+            <div class="small">Состояние: <span class="status-text">Свободно</span></div>
+            <div class="times"></div>
+            <div class="status" aria-hidden>Свободно</div>
+          </div>
+
+          <div class="cab" data-id="5" data-type="VIP">
+            <div class="title">VIP 2</div>
+            <div class="type">VIP • 500₽/час</div>
+            <div class="small">Состояние: <span class="status-text">Свободно</span></div>
+            <div class="times"></div>
+            <div class="status" aria-hidden>Свободно</div>
+          </div>
+
+          <div class="cab" data-id="6" data-type="VIP">
+            <div class="title">VIP 3</div>
+            <div class="type">VIP • 500₽/час</div>
+            <div class="small">Состояние: <span class="status-text">Свободно</span></div>
+            <div class="times"></div>
+            <div class="status" aria-hidden>Свободно</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bookings-list card" id="bookingsOverview" style="margin-top:22px;">
+        <strong>Активные брони (тест):</strong>
+        <div id="bookingsDump" style="margin-top:8px;font-size:13px;color:#dffaff;opacity:0.95;"></div>
+        <div style="margin-top:10px;font-size:13px;color:#bfefff;">Для теста: брони хранятся в браузере (localStorage). Авто-освобождение по времени включено.</div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="right-panel">
+    <div class="card">
+      <h3>Меню — снэки & напитки</h3>
+      <div class="snack"><div>Чипсы “Crisp”</div><div>120₽</div></div>
+      <div class="snack"><div>Кола 0.5л</div><div>80₽</div></div>
+      <div class="snack"><div>Энергетик “Boost”</div><div>180₽</div></div>
+      <div class="snack"><div>Хот-дог</div><div>200₽</div></div>
+      <div class="snack"><div>Пицца (кусок)</div><div>220₽</div></div>
+    </div>
+
+    <div class="card">
+      <h3>Контакты</h3>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="icon" aria-hidden>
+            <!-- WhatsApp simple icon -->
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#22e3ff" d="M20.5 3.5A11 11 0 0 0 2.9 13.4L2 17l3.6-1.1A11 11 0 1 0 20.5 3.5z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:700;color:var(--neon-cyan)">WhatsApp</div>
+            <div style="font-size:13px;color:#cfeff6">+7 8938 020 2016</div>
+          </div>
+        </div>
+
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="icon" aria-hidden>
+            <!-- Instagram simple icon -->
+            <svg width="18" height="18" viewBox="0 0 24 24"><path fill="#7de3ff" d="M7 2h10a5 5 0 0 1 5 5v10a5 5 0 0 1-5 5H7a5 5 0 0 1-5-5V7a5 5 0 0 1 5-5z"/></svg>
+          </div>
+          <div>
+            <div style="font-weight:700;color:var(--neon-cyan)">Instagram</div>
+            <div style="font-size:13px;color:#cfeff6">@GGGameClub</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;display:flex;align-items:center;gap:12px;justify-content:space-between;">
+        <div style="font-size:12px;color:#bfefff">QR (WhatsApp тест):</div>
+        <div class="qr" id="qrFake" title="Сфабрикованный QR для теста">
+          <!-- Simple fake QR (SVG) embedded -->
+          <svg viewBox="0 0 100 100" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <rect width="100" height="100" fill="#fff"/>
+            <g fill="#000">
+              <rect x="6" y="6" width="22" height="22"/>
+              <rect x="6" y="6" width="8" height="8" fill="#fff"/>
+              <rect x="6" y="20" width="8" height="8" fill="#fff"/>
+              <rect x="6" y="34" width="8" height="8" fill="#fff"/>
+              <rect x="72" y="6" width="22" height="22"/>
+              <rect x="72" y="72" width="22" height="22"/>
+              <rect x="58" y="58" width="6" height="6"/>
+              <rect x="40" y="40" width="6" height="6"/>
+              <rect x="20" y="60" width="6" height="6"/>
+              <rect x="60" y="20" width="6" height="6"/>
+              <rect x="30" y="10" width="4" height="4"/>
+              <rect x="48" y="20" width="6" height="6"/>
+            </g>
+          </svg>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Управление (тест)</h3>
+      <div style="font-size:13px;color:#bfefff;margin-bottom:8px;">
+        Отмена своей брони — по коду ниже. Админ-режим показывает контактные данные и позволяет удалять любые брони.
+      </div>
+
+      <!-- cancel by code -->
+      <div style="margin-bottom:10px;">
+        <label style="font-size:13px;color:#cfeff6;margin-bottom:6px;">Отмена брони (код)</label>
+        <input id="cancelCode" placeholder="Вставьте код брони" style="width:100%;padding:8px;border-radius:6px;border:none;background:rgba(255,255,255,0.02);color:#dffaff;" />
+        <button class="btn" id="cancelByCodeBtn" style="margin-top:8px;">Отменить бронь</button>
+      </div>
+
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="adminBtn" style="flex:1;">Войти как админ</button>
+        <button class="btn cancel" id="clearAll" style="flex:1;">Сбросить все</button>
+      </div>
+    </div>
+
+  </aside>
+</div>
+
+<!-- Модал бронирования -->
+<div class="modal" id="modal">
+  <div class="modal-inner" role="dialog" aria-modal="true">
+    <h2 id="modalTitle">Бронирование — Кабина</h2>
+    <div id="modalCabInfo" style="font-size:13px;color:#bfefff;margin-bottom:8px;"></div>
+
+    <div id="existingTimes" style="font-size:13px;color:#ffd6d6;margin-bottom:10px;"></div>
+
+    <form id="bookingForm">
+      <label>Имя</label>
+      <input type="text" id="bookName" placeholder="Ваше имя" required />
+      <label>Телефон</label>
+      <input type="tel" id="bookPhone" placeholder="+7 900 000 0000" required />
+      <div class="row">
+        <div class="half">
+          <label>С (время)</label>
+          <select id="startSelect"></select>
+        </div>
+        <div class="half">
+          <label>До (время)</label>
+          <select id="endSelect"></select>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+        <input type="checkbox" id="untilClose" />
+        <label for="untilClose" style="margin:0;font-size:13px;color:#bfefff;">До закрытия (02:00)</label>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-top:6px;">
+        <input type="checkbox" id="openEnded" />
+        <label for="openEnded" style="margin:0;font-size:13px;color:#bfefff;">Без времени окончания (open-ended)</label>
+      </div>
+
+      <div id="formWarning" style="color:#ffb3b3;font-size:13px;margin-top:8px;min-height:18px;"></div>
+
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn" type="submit">Подтвердить бронь</button>
+        <button class="btn cancel" type="button" id="cancelBtn">Отмена</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<footer>
+  <div style="font-size:13px;color:#bfefff">&copy; GG Game Club — тестовая версия</div>
+  <div style="display:flex;align-items:center;gap:12px;">
+    <div style="font-size:13px;color:#bfefff">Instagram: <strong style="margin-left:8px;color:var(--neon-cyan)">@GGGameClub</strong></div>
+    <div style="font-size:13px;color:#bfefff">WhatsApp: <strong style="margin-left:8px;color:var(--neon-cyan)">+7 8938 020 2016</strong></div>
+  </div>
+</footer>
+
+<script>
+/* ============================
+   Логика бронирования (JS)
+   - хранение в localStorage
+   - проверка пересечений (учитываем переход через полночь)
+   - автоматическое удаление просроченных броней
+   - опция "До закрытия" и "Open-ended"
+   - выдача кода брони (для отмены владельцем)
+   - админ-режим (пароль = admin123)
+   ============================ */
+
+const OPEN_HOUR = 11;   // 11:00
+const CLOSE_HOUR = 2;   // 02:00 (следующего дня)
+const HALL_CABS = Array.from(document.querySelectorAll('.cab'));
+
+let adminMode = false; // false by default
+const ADMIN_PASS = 'admin123'; // change if needed
+
+function nowDate() { return new Date(); }
+function toISODate(date) { return date.toISOString(); }
+
+function loadBookings(){
+  try { return JSON.parse(localStorage.getItem('gg_bookings') || '{}'); }
+  catch(e){ return {}; }
+}
+function saveBookings(b){ localStorage.setItem('gg_bookings', JSON.stringify(b)); }
+
+function uid(){ return 'b' + Math.random().toString(36).slice(2,9); }
+
+function timeToMinutes(t){
+  const [hh,mm] = t.split(':').map(Number);
+  return hh*60 + (mm||0);
+}
+
+function makeDateFromTime(timeStr){
+  const [hh,mm] = timeStr.split(':').map(Number);
+  const d = new Date();
+  d.setSeconds(0); d.setMilliseconds(0);
+  d.setHours(hh, mm||0, 0, 0);
+  if (CLOSE_HOUR <= OPEN_HOUR) {
+    if (hh <= CLOSE_HOUR) d.setDate(d.getDate() + 1);
+  }
+  return d;
+}
+
+function overlaps(aStart, aEnd, bStart, bEnd){
+  if (!aEnd && !bEnd) return true;
+  if (!aEnd) { return bEnd > aStart; }
+  if (!bEnd) { return aEnd > bStart; }
+  return (aStart < bEnd && aEnd > bStart);
+}
+function millis(d){ return d ? d.getTime() : null; }
+
+function checkOverlap(cabId, startDate, endDate, excludeBookingId=null){
+  const b = loadBookings();
+  const list = b[cabId] || [];
+  const s = millis(startDate), e = endDate ? millis(endDate) : null;
+  for (let r of list){
+    if (excludeBookingId && r.id === excludeBookingId) continue;
+    const rs = millis(new Date(r.startISO));
+    const re = r.endISO ? millis(new Date(r.endISO)) : null;
+    if (overlaps(s,e,rs,re)) return true;
+  }
+  return false;
+}
+
+/* UI refresh */
+function maskPhone(p) {
+  if (!p) return '';
+  // show only last 4 digits for non-admin
+  return p.replace(/\D/g,'').replace(/(\d{0,})(\d{4})$/, '***$2');
+}
+function maskName(n) {
+  if (!n) return '';
+  return n.length>2 ? n[0] + '***' + n.slice(-1) : '***';
+}
+
+function refreshUI(){
+  const b = loadBookings();
+  const dumpEl = document.getElementById('bookingsDump');
+  const lines = [];
+  HALL_CABS.forEach(el => {
+    const id = el.dataset.id;
+    const list = b[id] || [];
+    const now = Date.now();
+    const active = list.filter(x => {
+      if (x.openEnded) return true;
+      if (!x.endISO) return true;
+      return new Date(x.endISO).getTime() > now;
+    });
+    if (active.length) {
+      el.classList.add('booked');
+      el.querySelector('.status').classList.add('busy');
+      // show "Занято (подробнее)" to avoid impression of all-day busy
+      el.querySelector('.status').textContent = 'Занято (подробнее)';
+      el.querySelector('.status-text').textContent = 'Частично занято';
+      el.querySelector('.times').textContent = active.map(a => {
+        const s = new Date(a.startISO); const e = a.endISO ? new Date(a.endISO) : null;
+        const sf = s.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+        const ef = e ? e.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '—';
+        return `${sf}–${ef}`;
+      }).join('; ');
+      active.forEach(a => {
+        // For dump: if admin show name/phone; otherwise hide personal data
+        if (adminMode) {
+          lines.push(`Каб ${id}: ${a.name} • ${new Date(a.startISO).toLocaleString([], {hour:'2-digit',minute:'2-digit'})} → ${a.endISO ? new Date(a.endISO).toLocaleString([], {hour:'2-digit',minute:'2-digit'}) : 'open-ended'} • ${a.phone} • Код:${a.id}`);
+        } else {
+          const s = new Date(a.startISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+          const e = a.endISO ? new Date(a.endISO).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : 'open-ended';
+          lines.push(`Каб ${id}: ${s} → ${e} • Код:${(a.id.slice(0,3)+'...'+a.id.slice(-3))}`);
+        }
+      });
+    } else {
+      el.classList.remove('booked');
+      el.querySelector('.status').classList.remove('busy');
+      el.querySelector('.status').textContent = 'Свободно';
+      el.querySelector('.status-text').textContent = 'Свободно';
+      el.querySelector('.times').textContent = '';
+    }
+  });
+  dumpEl.innerHTML = lines.length ? lines.map((l,i) => `<div style="padding:6px 0;border-bottom:1px solid rgba(125,227,255,0.03)">${l}${adminMode?` <button data-line="${i}" class="admin-delete" style="margin-left:8px;">Удалить</button>`:''}</div>`).join('') : '<div>Нет активных броней.</div>';
+}
+
+/* cleanup expired */
+function cleanupExpired(){
+  const b = loadBookings();
+  const now = Date.now();
+  let changed = false;
+  Object.keys(b).forEach(cabId=>{
+    const list = b[cabId].filter(item=>{
+      if (item.openEnded) return true;
+      if (!item.endISO) return true;
+      return new Date(item.endISO).getTime() > now;
+    });
+    if (list.length !== (b[cabId]||[]).length) {
+      b[cabId] = list;
+      changed = true;
+    }
+  });
+  if (changed) saveBookings(b);
+  refreshUI();
+}
+
+/* time options */
+function timesArray(){
+  const times = [];
+  for (let h = OPEN_HOUR; h <= 23; h++) times.push(String(h).padStart(2,'0') + ':00');
+  for (let h = 0; h <= CLOSE_HOUR; h++) times.push(String(h).padStart(2,'0') + ':00');
+  return times;
+}
+
+/* open modal for cab */
+let currentCab = null;
+function openModalForCab(cabEl){
+  currentCab = cabEl;
+  const cabId = cabEl.dataset.id;
+  document.getElementById('modalTitle').textContent = `Бронирование — ${cabEl.querySelector('.title').textContent}`;
+  document.getElementById('modalCabInfo').textContent = `${cabEl.dataset.type} • ${cabEl.querySelector('.type').textContent.split('•')[1]}`;
+  // populate time selects
+  const times = timesArray();
+  const sSel = document.getElementById('startSelect'), eSel = document.getElementById('endSelect');
+  sSel.innerHTML = ''; eSel.innerHTML = '';
+  times.forEach(t=>{
+    const opt = document.createElement('option'); opt.value = t; opt.textContent = t; sSel.appendChild(opt);
+    const opt2 = document.createElement('option'); opt2.value = t; opt2.textContent = t; eSel.appendChild(opt2);
+  });
+  // default start: next hour
+  const d = new Date(); d.setMinutes(0,0,0); d.setHours(d.getHours()+1);
+  const defStart = String(d.getHours()).padStart(2,'0') + ':00';
+  if (times.includes(defStart)) sSel.value = defStart; else sSel.selectedIndex = 0;
+  eSel.selectedIndex = Math.min(sSel.selectedIndex+1, eSel.options.length-1);
+
+  showExistingBookings(cabId);
+  document.getElementById('formWarning').textContent = '';
+  document.getElementById('bookName').value = '';
+  document.getElementById('bookPhone').value = '';
+  document.getElementById('untilClose').checked = false;
+  document.getElementById('openEnded').checked = false;
+  document.getElementById('modal').style.display='flex';
+}
+
+/* show existing bookings for cab in modal (public view hides names/phones unless admin) */
+function showExistingBookings(cabId){
+  const b = loadBookings();
+  const list = b[cabId] || [];
+  const el = document.getElementById('existingTimes');
+  if (!list.length){ el.innerHTML = '<div style="color:#cfeff6">На данный момент — все свободно.</div>'; return; }
+  const lines = list.map(x=>{
+    const s = new Date(x.startISO); const e = x.endISO ? new Date(x.endISO) : null;
+    const timeStr = `${s.toLocaleString([], {hour:'2-digit',minute:'2-digit'})} → ${e ? e.toLocaleString([], {hour:'2-digit',minute:'2-digit'}) : 'open-ended'}`;
+    if (adminMode) return `${timeStr} — ${x.name} • ${x.phone} • Код:${x.id}`;
+    return `${timeStr} — (бронь)`;
+  });
+  el.innerHTML = '<div style="color:#ffd6d6">Занятые интервалы:</div><div style="margin-top:6px;color:#dffaff">'+lines.join('<br/>')+'</div>';
+}
+
+/* attach handlers */
+HALL_CABS.forEach(cab=>{
+  // click on entire cab opens booking modal
+  cab.addEventListener('click', ()=> openModalForCab(cab));
+  // make status badge clickable separately
+  const statusBadge = cab.querySelector('.status');
+  statusBadge.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    openModalForCab(cab);
+  });
+});
+
+/* modal cancel */
+document.getElementById('cancelBtn').addEventListener('click', ()=> { document.getElementById('modal').style.display='none'; });
+
+/* booking submission */
+document.getElementById('bookingForm').addEventListener('submit', function(e){
+  e.preventDefault();
+  const name = document.getElementById('bookName').value.trim();
+  const phone = document.getElementById('bookPhone').value.trim();
+  const startT = document.getElementById('startSelect').value;
+  const endT = document.getElementById('endSelect').value;
+  const untilClose = document.getElementById('untilClose').checked;
+  const openEnded = document.getElementById('openEnded').checked;
+  const warnEl = document.getElementById('formWarning');
+  warnEl.textContent = '';
+
+  if (!currentCab) return;
+  if (!name || !phone) { warnEl.textContent = 'Пожалуйста, укажите имя и телефон.'; return; }
+
+  const sDate = makeDateFromTime(startT);
+  let eDate = null;
+  if (openEnded){ eDate = null; }
+  else if (untilClose){
+    const d = new Date(); d.setHours(CLOSE_HOUR, 0, 0, 0);
+    if (CLOSE_HOUR <= OPEN_HOUR) d.setDate(d.getDate()+1);
+    eDate = d;
+  } else {
+    eDate = makeDateFromTime(endT);
+    if (eDate.getTime() <= sDate.getTime()) eDate.setDate(eDate.getDate()+1);
+  }
+
+  const cabId = currentCab.dataset.id;
+  if (checkOverlap(cabId, sDate, eDate)){
+    warnEl.textContent = 'Время пересекается с уже существующей бронью. Выберите другой интервал.';
+    return;
+  }
+
+  const b = loadBookings();
+  if (!b[cabId]) b[cabId] = [];
+  const newBooking = { id: uid(), name, phone, startISO: toISODate(sDate), endISO: eDate ? toISODate(eDate) : null, openEnded: !!openEnded };
+  b[cabId].push(newBooking);
+  saveBookings(b);
+  refreshUI();
+  document.getElementById('modal').style.display='none';
+
+  // inform user of booking code and copy to clipboard
+  const info = `Бронь подтверждена!\nКод брони: ${newBooking.id}\nСохраните код — он нужен для отмены.`;
+  try {
+    navigator.clipboard.writeText(newBooking.id);
+    alert(info + '\nКод скопирован в буфер обмена.');
+  } catch (err) {
+    alert(info + '\n(Не удалось скопировать автоматически.)');
+  }
+});
+
+/* cancel by code (owner) */
+document.getElementById('cancelByCodeBtn').addEventListener('click', ()=>{
+  const code = document.getElementById('cancelCode').value.trim();
+  if (!code) { alert('Вставьте код брони.'); return; }
+  const b = loadBookings();
+  let found=false;
+  Object.keys(b).forEach(cabId=>{
+    for (let i=b[cabId].length-1;i>=0;i--){
+      if (b[cabId][i].id === code){
+        if (!confirm(`Отменить бронь ${code} на кабинe ${cabId}?`)) return;
+        b[cabId].splice(i,1);
+        found=true;
+      }
+    }
+  });
+  if (found){
+    saveBookings(b);
+    refreshUI();
+    alert('Ваша бронь отменена.');
+    document.getElementById('cancelCode').value='';
+  } else alert('Код не найден.');
+});
+
+/* admin button */
+document.getElementById('adminBtn').addEventListener('click', ()=>{
+  const pass = prompt('Введите пароль администратора:');
+  if (pass === ADMIN_PASS) {
+    adminMode = true;
+    alert('Включён режим администратора.');
+    refreshUI();
+  } else {
+    alert('Неверный пароль.');
+  }
+});
+
+/* clear all (admin) - protected by confirmation */
+document.getElementById('clearAll').addEventListener('click', ()=>{
+  if (!confirm('Сбросить все брони (тест)? (только для теста)')) return;
+  localStorage.removeItem('gg_bookings');
+  refreshUI();
+});
+
+/* automatic cleanup loop — каждые 30 секунд */
+setInterval(cleanupExpired, 30000);
+cleanupExpired();
+refreshUI();
+
+/* bookings overview admin delete buttons handler */
+document.getElementById('bookingsOverview').addEventListener('click', (ev)=>{
+  if (!adminMode) return; // only admin actions
+  const btn = ev.target.closest('.admin-delete');
+  if (!btn) return;
+  // find index of clicked line
+  const idx = Number(btn.getAttribute('data-line'));
+  // We need to map idx back to booking entry — rebuild list of active bookings order used in refreshUI
+  const b = loadBookings();
+  const entries = [];
+  Object.keys(b).forEach(cabId=>{
+    (b[cabId]||[]).forEach(item=>{
+      const now = Date.now();
+      const active = item.openEnded || !item.endISO || (new Date(item.endISO).getTime() > now);
+      if (active) entries.push({ cabId, id: item.id });
+    });
+  });
+  const target = entries[idx];
+  if (!target) { alert('Не удалось найти бронь.'); return; }
+  if (!confirm(`Удалить бронь ${target.id} в кабине ${target.cabId}?`)) return;
+  // remove it
+  const list = b[target.cabId];
+  for (let i=0;i<list.length;i++){
+    if (list[i].id === target.id) { list.splice(i,1); break; }
+  }
+  b[target.cabId] = list;
+  saveBookings(b);
+  refreshUI();
+});
+
+/* ui niceties: ensure endSelect >= startSelect */
+document.getElementById('startSelect').addEventListener('change', function(){
+  const sIdx = this.selectedIndex;
+  const eSel = document.getElementById('endSelect');
+  if (eSel.selectedIndex <= sIdx) eSel.selectedIndex = Math.min(sIdx+1, eSel.options.length-1);
+});
+
+/* modal background click to close */
+document.getElementById('modal').addEventListener('click', function(e){
+  if (e.target === this) this.style.display='none';
+});
+</script>
+
+</body>
+</html>
